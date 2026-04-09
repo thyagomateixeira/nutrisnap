@@ -1,0 +1,59 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  weight_kg DECIMAL(5,2),
+  height_cm DECIMAL(5,2),
+  age INTEGER,
+  sex CHAR(1),
+  activity_level VARCHAR(20),
+  bmr_calories INTEGER,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_goals (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  calories INTEGER DEFAULT 2000,
+  protein_g INTEGER DEFAULT 150,
+  carbs_g INTEGER DEFAULT 250,
+  fat_g INTEGER DEFAULT 65,
+  fiber_g INTEGER DEFAULT 25,
+  water_ml INTEGER DEFAULT 2000
+);
+
+CREATE TABLE IF NOT EXISTS meals (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(200),
+  eaten_at TIMESTAMP DEFAULT NOW(),
+  image_url TEXT,
+  calories INTEGER,
+  protein_g DECIMAL(6,2),
+  carbs_g DECIMAL(6,2),
+  fat_g DECIMAL(6,2),
+  fiber_g DECIMAL(6,2),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS meal_foods (
+  id SERIAL PRIMARY KEY,
+  meal_id INTEGER REFERENCES meals(id) ON DELETE CASCADE,
+  name VARCHAR(200),
+  emoji VARCHAR(10),
+  portion VARCHAR(100),
+  calories INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS water_logs (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  amount_ml INTEGER NOT NULL,
+  logged_at TIMESTAMP DEFAULT NOW()
+);

@@ -1,20 +1,15 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const analyzeMeal = async (req, res) => {
   const { image_base64, mime_type } = req.body;
   if (!image_base64) return res.status(400).json({ error: 'Imagem não enviada' });
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mime_type || 'image/jpeg', data: image_base64 } },
-          { type: 'text', text: `Você é um nutricionista especializado em análise visual de alimentos. Analise esta imagem e retorne APENAS JSON válido, sem markdown.
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    const prompt = `Você é um nutricionista especializado em análise visual de alimentos. Analise esta imagem e retorne APENAS JSON válido, sem markdown.
 
 Estrutura obrigatória:
 {
@@ -28,12 +23,17 @@ Estrutura obrigatória:
   "observations": "dica nutricional curta em português, máx 2 frases"
 }
 
-Se não for um prato de comida: {"error":"Não identifiquei um prato de comida nessa imagem."}` }
-        ]
-      }]
-    });
+Se não for um prato de comida: {"error":"Não identifiquei um prato de comida nessa imagem."}`;
 
-    const text = response.content.map(c => c.text || '').join('');
+    const imagePart = {
+      inlineData: {
+        data: image_base64,
+        mimeType: mime_type || 'image/jpeg'
+      }
+    };
+
+    const response = await model.generateContent([prompt, imagePart]);
+    const text = response.response.text();
     const result = JSON.parse(text.replace(/```json|```/g, '').trim());
     if (result.error) return res.status(400).json({ error: result.error });
     res.json(result);

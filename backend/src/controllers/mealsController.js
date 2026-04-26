@@ -4,7 +4,7 @@ const getMeals = async (req, res) => {
   const { date } = req.query;
   try {
     const result = await pool.query(
-      `SELECT m.*, json_agg(mf.*) as foods
+      `SELECT m.*, COALESCE(json_agg(mf.*) FILTER (WHERE mf.id IS NOT NULL), '[]') as foods
        FROM meals m
        LEFT JOIN meal_foods mf ON mf.meal_id = m.id
        WHERE m.user_id = $1 AND DATE(m.eaten_at) = $2

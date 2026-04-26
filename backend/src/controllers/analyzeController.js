@@ -9,21 +9,25 @@ const analyzeMeal = async (req, res) => {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const prompt = `Você é um nutricionista especializado em análise visual de alimentos. Analise esta imagem e retorne APENAS JSON válido, sem markdown.
+    const prompt = `Você é um nutricionista especializado em análise visual de alimentos. Analise esta imagem e retorne APENAS JSON válido, sem markdown, sem explicações.
+
+Aceite qualquer tipo de alimento: pratos prontos, frutas, lanches, bebidas, snacks, cestas de frutas, etc.
 
 Estrutura obrigatória:
 {
-  "meal_name": "nome da refeição em português",
-  "total_calories": número inteiro,
-  "portion_description": "ex: prato médio ~400g",
+  "meal_name": "nome descritivo em português",
+  "total_calories": número inteiro estimado,
+  "portion_description": "descrição da porção visível",
   "macros": { "protein": número, "carbs": número, "fat": número, "fiber": número },
+  "micros": { "sodium_mg": número, "calcium_mg": número, "iron_mg": número, "vitamin_c_mg": número },
   "foods": [
-    { "emoji": "emoji", "name": "nome", "portion": "quantidade", "calories": número }
+    { "emoji": "emoji do alimento", "name": "nome", "portion": "quantidade estimada", "calories": número }
   ],
   "observations": "dica nutricional curta em português, máx 2 frases"
 }
 
-Se não for um prato de comida: {"error":"Não identifiquei um prato de comida nessa imagem."}`;
+Se a imagem não contiver nenhum alimento ou bebida: {"error":"Não identifiquei alimentos nessa imagem."}
+Se não conseguir estimar as calorias com segurança, use estimativas conservadoras baseadas em porções típicas.`;
 
     const imagePart = {
       inlineData: {

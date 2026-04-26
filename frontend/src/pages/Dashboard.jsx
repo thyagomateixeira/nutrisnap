@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
 
-function MacroBar({ label, value, max, color }) {
+function ProgressBar({ label, value, max, color, unit = 'g' }) {
   const pct = Math.min(100, max > 0 ? Math.round((value / max) * 100) : 0)
   return (
     <div>
       <div className="flex justify-between text-xs text-slate-500 mb-1">
         <span>{label}</span>
-        <span>{value}g / {max}g</span>
+        <span>{value}{unit} / {max}{unit}</span>
       </div>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
@@ -18,21 +18,24 @@ function MacroBar({ label, value, max, color }) {
   )
 }
 
-function WaterDots({ current, goal }) {
+function WaterBar({ current, goal }) {
+  const pct = Math.min(100, goal > 0 ? Math.round((current / goal) * 100) : 0)
   const glasses = Math.round(goal / 250) || 8
   const filled = Math.round(current / 250)
   return (
-    <div className="flex flex-wrap gap-2 mt-2">
-      {Array.from({ length: glasses }).map((_, i) => (
-        <div
-          key={i}
-          className={`w-8 h-8 rounded-full flex items-center justify-center text-lg transition-all ${
-            i < filled ? 'bg-blue-100' : 'bg-slate-100'
-          }`}
-        >
-          💧
-        </div>
-      ))}
+    <div className="space-y-2">
+      <div className="flex justify-between text-xs text-slate-500">
+        <span>💧 {current}ml de {goal}ml</span>
+        <span>{pct}%</span>
+      </div>
+      <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-full bg-blue-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex flex-wrap gap-1.5 pt-1">
+        {Array.from({ length: glasses }).map((_, i) => (
+          <span key={i} className={`text-base transition-all ${i < filled ? 'opacity-100' : 'opacity-25'}`}>💧</span>
+        ))}
+      </div>
     </div>
   )
 }
@@ -68,23 +71,26 @@ export default function Dashboard() {
 
   useEffect(() => { load() }, [load])
 
-  const totalCal = meals.reduce((s, m) => s + (m.calories || 0), 0)
-  const totalProt = meals.reduce((s, m) => s + (m.protein_g || 0), 0)
-  const totalCarb = meals.reduce((s, m) => s + (m.carbs_g || 0), 0)
-  const totalFat  = meals.reduce((s, m) => s + (m.fat_g   || 0), 0)
+  const totalCal  = meals.reduce((s, m) => s + (Number(m.calories)  || 0), 0)
+  const totalProt = meals.reduce((s, m) => s + (Number(m.protein_g) || 0), 0)
+  const totalCarb = meals.reduce((s, m) => s + (Number(m.carbs_g)   || 0), 0)
+  const totalFat  = meals.reduce((s, m) => s + (Number(m.fat_g)     || 0), 0)
+  const totalFiber = meals.reduce((s, m) => s + (Number(m.fiber_g)  || 0), 0)
 
-  const goalCal  = profile?.goals?.calories_goal  || 2000
-  const goalProt = profile?.goals?.protein_goal   || 150
-  const goalCarb = profile?.goals?.carbs_goal     || 250
-  const goalFat  = profile?.goals?.fat_goal       || 65
-  const goalWater = profile?.goals?.water_goal_ml || 2000
+  // Nomes corretos conforme o banco de dados
+  const goalCal   = Number(profile?.goals?.calories)  || 2000
+  const goalProt  = Number(profile?.goals?.protein_g) || 150
+  const goalCarb  = Number(profile?.goals?.carbs_g)   || 250
+  const goalFat   = Number(profile?.goals?.fat_g)     || 65
+  const goalFiber = Number(profile?.goals?.fiber_g)   || 25
+  const goalWater = Number(profile?.goals?.water_ml)  || 2000
 
   const calPct = Math.min(100, Math.round((totalCal / goalCal) * 100))
 
   const addWater = async (ml) => {
     setAddingWater(true)
     try {
-      await api.post('/water', { amount_ml: ml, logged_at: new Date().toISOString() })
+      await api.post('/water', { amount_ml: ml })
       await load()
     } catch (err) {
       console.error(err)
@@ -112,13 +118,11 @@ export default function Dashboard() {
     return 'Boa noite'
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-4xl animate-bounce">🥗</div>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-4xl animate-bounce">🥗</div>
+    </div>
+  )
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-4 space-y-4">
@@ -135,50 +139,63 @@ export default function Dashboard() {
 
       {/* Calorias */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-        <div className="flex justify-between items-start mb-3">
+        <div className="flex justify-between items-start mb-4">
           <div>
             <p className="text-sm text-slate-500">Calorias hoje</p>
             <p className="text-3xl font-bold text-slate-800">
               {totalCal} <span className="text-lg font-normal text-slate-400">/ {goalCal}</span>
             </p>
           </div>
-          <div className="w-14 h-14 rounded-full border-4 border-primary-200 flex items-center justify-center relative">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center relative">
             <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 56 56">
               <circle cx="28" cy="28" r="24" fill="none" stroke="#dcfce7" strokeWidth="4" />
-              <circle
-                cx="28" cy="28" r="24" fill="none"
-                stroke="#16a34a" strokeWidth="4"
+              <circle cx="28" cy="28" r="24" fill="none" stroke="#16a34a" strokeWidth="4"
                 strokeDasharray={`${2 * Math.PI * 24}`}
                 strokeDashoffset={`${2 * Math.PI * 24 * (1 - calPct / 100)}`}
-                strokeLinecap="round"
-              />
+                strokeLinecap="round" />
             </svg>
             <span className="text-xs font-bold text-primary-700 z-10">{calPct}%</span>
           </div>
         </div>
 
+        {/* Macros */}
         <div className="space-y-2">
-          <MacroBar label="Proteína" value={Math.round(totalProt)} max={goalProt} color="bg-blue-400" />
-          <MacroBar label="Carboidrato" value={Math.round(totalCarb)} max={goalCarb} color="bg-yellow-400" />
-          <MacroBar label="Gordura" value={Math.round(totalFat)} max={goalFat} color="bg-red-400" />
+          <ProgressBar label="Proteína"     value={Math.round(totalProt)}  max={goalProt}  color="bg-blue-400" />
+          <ProgressBar label="Carboidrato"  value={Math.round(totalCarb)}  max={goalCarb}  color="bg-yellow-400" />
+          <ProgressBar label="Gordura"      value={Math.round(totalFat)}   max={goalFat}   color="bg-red-400" />
+        </div>
+
+        {/* Divisor micronutrientes */}
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Micronutrientes</p>
+          <div className="space-y-2">
+            <ProgressBar label="Fibras" value={Math.round(totalFiber)} max={goalFiber} color="bg-emerald-400" />
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            {[
+              { label: 'Proteína', value: Math.round(totalProt), unit: 'g', color: 'text-blue-600 bg-blue-50' },
+              { label: 'Fibras',   value: Math.round(totalFiber), unit: 'g', color: 'text-emerald-600 bg-emerald-50' },
+              { label: 'Restante', value: Math.max(0, goalCal - totalCal), unit: 'kcal', color: 'text-slate-600 bg-slate-50' },
+            ].map(({ label, value, unit, color }) => (
+              <div key={label} className={`rounded-xl p-2 text-center ${color}`}>
+                <p className="font-bold text-sm">{value}<span className="text-xs font-normal ml-0.5">{unit}</span></p>
+                <p className="text-xs opacity-75 mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Água */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-        <div className="flex justify-between items-center mb-1">
-          <p className="font-semibold text-slate-700">💧 Água</p>
-          <p className="text-sm text-slate-500">{water.total_ml}ml / {goalWater}ml</p>
+        <div className="flex justify-between items-center mb-3">
+          <p className="font-semibold text-slate-700">Hidratação</p>
         </div>
-        <WaterDots current={water.total_ml} goal={goalWater} />
+        <WaterBar current={water.total_ml} goal={goalWater} />
         <div className="flex gap-2 mt-3">
           {[150, 250, 500].map((ml) => (
-            <button
-              key={ml}
-              onClick={() => addWater(ml)}
-              disabled={addingWater}
-              className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors disabled:opacity-50"
-            >
+            <button key={ml} onClick={() => addWater(ml)} disabled={addingWater}
+              className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors disabled:opacity-50">
               +{ml}ml
             </button>
           ))}
@@ -189,10 +206,8 @@ export default function Dashboard() {
       <div>
         <div className="flex justify-between items-center mb-3">
           <h2 className="font-semibold text-slate-700">Refeições de hoje</h2>
-          <button
-            onClick={() => navigate('/analyze')}
-            className="flex items-center gap-1 text-sm text-primary-600 font-medium bg-primary-50 px-3 py-1.5 rounded-xl hover:bg-primary-100 transition-colors"
-          >
+          <button onClick={() => navigate('/analyze')}
+            className="flex items-center gap-1 text-sm text-primary-600 font-medium bg-primary-50 px-3 py-1.5 rounded-xl hover:bg-primary-100 transition-colors">
             📷 Adicionar
           </button>
         </div>
@@ -201,10 +216,7 @@ export default function Dashboard() {
           <div className="text-center py-10 bg-white rounded-2xl border border-slate-100">
             <div className="text-4xl mb-2">🍽️</div>
             <p className="text-slate-500 text-sm">Nenhuma refeição registrada hoje</p>
-            <button
-              onClick={() => navigate('/analyze')}
-              className="mt-3 text-primary-600 text-sm font-medium"
-            >
+            <button onClick={() => navigate('/analyze')} className="mt-3 text-primary-600 text-sm font-medium">
               Fotografar primeira refeição
             </button>
           </div>
@@ -216,7 +228,7 @@ export default function Dashboard() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       {meal.image_url && (
-                        <img src={meal.image_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                        <img src={meal.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                       )}
                       <div>
                         <p className="font-medium text-slate-800">{meal.name}</p>
@@ -226,19 +238,15 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-sm font-semibold text-primary-700">{meal.calories} kcal</span>
-                    <button
-                      onClick={() => deleteMeal(meal.id)}
-                      disabled={deletingMeal === meal.id}
-                      className="text-slate-300 hover:text-red-400 transition-colors text-lg leading-none disabled:opacity-50"
-                    >
+                    <button onClick={() => deleteMeal(meal.id)} disabled={deletingMeal === meal.id}
+                      className="text-slate-300 hover:text-red-400 transition-colors text-xl leading-none disabled:opacity-50">
                       ×
                     </button>
                   </div>
                 </div>
-
-                {meal.foods && meal.foods.length > 0 && (
+                {meal.foods?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {meal.foods.map((f, i) => (
                       <span key={i} className="text-xs bg-slate-50 text-slate-600 px-2 py-0.5 rounded-full">
@@ -247,11 +255,11 @@ export default function Dashboard() {
                     ))}
                   </div>
                 )}
-
                 <div className="flex gap-3 mt-2 text-xs text-slate-400">
                   <span>P: {Math.round(meal.protein_g)}g</span>
                   <span>C: {Math.round(meal.carbs_g)}g</span>
                   <span>G: {Math.round(meal.fat_g)}g</span>
+                  {meal.fiber_g > 0 && <span>F: {Math.round(meal.fiber_g)}g</span>}
                 </div>
               </div>
             ))}

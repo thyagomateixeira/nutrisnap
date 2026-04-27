@@ -26,6 +26,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [form, setForm] = useState({
     age: '', gender: 'male', height_cm: '', weight_kg: '',
     activity_level: 'moderate', goal: 'maintain', water_goal_ml: 2000,
@@ -53,6 +54,7 @@ export default function Profile() {
     e.preventDefault()
     setSaving(true)
     setSuccess(false)
+    setSaveError('')
     try {
       await api.put('/profile', {
         age:            Number(form.age),
@@ -71,6 +73,7 @@ export default function Profile() {
       }
     } catch (err) {
       console.error(err)
+      setSaveError(err.response?.data?.error || 'Erro ao salvar perfil. Tente novamente.')
     } finally {
       setSaving(false)
     }
@@ -107,6 +110,12 @@ export default function Profile() {
       {success && (
         <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-xl text-center font-medium">
           ✅ {isFirstLogin ? 'Perfil salvo! Redirecionando...' : 'Perfil atualizado com sucesso!'}
+        </div>
+      )}
+
+      {saveError && (
+        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl text-center font-medium">
+          ❌ {saveError}
         </div>
       )}
 

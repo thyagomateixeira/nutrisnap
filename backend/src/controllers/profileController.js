@@ -17,7 +17,7 @@ const getProfile = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-  const { weight_kg, height_cm, age, gender, activity_level, goal, water_goal_ml } = req.body;
+  const { weight_kg, height_cm, age, gender, activity_level, goal, water_goal_ml, avatar_url } = req.body;
 
   try {
     // gender 'male'/'female' → sex 'M'/'F'
@@ -26,11 +26,12 @@ const updateProfile = async (req, res) => {
 
     // Salva perfil físico
     await pool.query(`
-      INSERT INTO user_profiles (user_id, weight_kg, height_cm, age, sex, activity_level, bmr_calories)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      INSERT INTO user_profiles (user_id, weight_kg, height_cm, age, sex, activity_level, bmr_calories, avatar_url)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       ON CONFLICT (user_id) DO UPDATE
-      SET weight_kg=$2, height_cm=$3, age=$4, sex=$5, activity_level=$6, bmr_calories=$7, updated_at=NOW()
-    `, [req.userId, weight_kg, height_cm, age, sex, activity_level, bmr]);
+      SET weight_kg=$2, height_cm=$3, age=$4, sex=$5, activity_level=$6, bmr_calories=$7,
+          avatar_url=COALESCE($8, user_profiles.avatar_url), updated_at=NOW()
+    `, [req.userId, weight_kg, height_cm, age, sex, activity_level, bmr, avatar_url || null]);
 
     // Calcula metas automáticas a partir do BMR + objetivo
     if (bmr) {

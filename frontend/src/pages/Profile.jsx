@@ -1,7 +1,29 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
+
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = 160
+        canvas.height = 160
+        const ctx = canvas.getContext('2d')
+        const size = Math.min(img.width, img.height)
+        const sx = (img.width - size) / 2
+        const sy = (img.height - size) / 2
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 160, 160)
+        resolve(canvas.toDataURL('image/jpeg', 0.7))
+      }
+      img.src = e.target.result
+    }
+    reader.readAsDataURL(file)
+  })
+}
 
 const activityOptions = [
   { value: 'sedentary',   label: 'Sedentário (sem exercício)' },
@@ -27,6 +49,8 @@ export default function Profile() {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [avatar, setAvatar] = useState(null)
+  const fileInputRef = useRef(null)
   const [form, setForm] = useState({
     age: '', gender: 'male', height_cm: '', weight_kg: '',
     activity_level: 'moderate', goal: 'maintain', water_goal_ml: 2000,
@@ -45,10 +69,18 @@ export default function Profile() {
         goal:           g?.goal           || 'maintain',
         water_goal_ml:  g?.water_ml       || 2000,
       })
+      if (p?.avatar_url) setAvatar(p.avatar_url)
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const compressed = await compressImage(file)
+    setAvatar(compressed)
+  }
 
   const save = async (e) => {
     e.preventDefault()
@@ -64,6 +96,7 @@ export default function Profile() {
         activity_level: form.activity_level,
         goal:           form.goal,
         water_goal_ml:  Number(form.water_goal_ml),
+        avatar_url:     avatar || undefined,
       })
       setSuccess(true)
       if (isFirstLogin) {
@@ -98,12 +131,28 @@ export default function Profile() {
 
       {/* Card do usuário */}
       <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center text-2xl font-bold text-primary-700">
-          {user?.name?.[0]?.toUpperCase()}
+        <div className="relative flex-shrink-0">
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="w-16 h-16 rounded-full overflow-hidden border-2 border-primary-200 hover:border-primary-500 transition-colors focus:outline-none group">
+            {avatar
+              ? <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
+              : <div className="w-full h-full bg-primary-100 flex items-center justify-center text-2xl font-bold text-primary-700">
+                  {user?.name?.[0]?.toUpperCase()}
+                </div>
+            }
+            <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-white text-xs font-medium">Alterar</span>
+            </div>
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
         </div>
         <div>
           <p className="font-semibold text-slate-800">{user?.name}</p>
           <p className="text-sm text-slate-400">{user?.email}</p>
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="text-xs text-primary-600 mt-0.5 hover:underline">
+            Alterar foto
+          </button>
         </div>
       </div>
 

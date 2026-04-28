@@ -132,8 +132,18 @@ export default function Dashboard() {
           <p className="text-slate-500 text-sm">{greeting()},</p>
           <h1 className="text-xl font-bold text-slate-800">{user?.name?.split(' ')[0]} 👋</h1>
         </div>
-        <div className="text-right text-xs text-slate-400">
-          {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
+        <div className="flex flex-col items-end gap-1">
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-100 flex-shrink-0">
+            {profile?.profile?.avatar_url
+              ? <img src={profile.profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+              : <div className="w-full h-full bg-primary-100 flex items-center justify-center text-sm font-bold text-primary-700">
+                  {user?.name?.[0]?.toUpperCase()}
+                </div>
+            }
+          </div>
+          <span className="text-xs text-slate-400">
+            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
+          </span>
         </div>
       </div>
 
